@@ -32,6 +32,14 @@ export default function ChatScreen({ navigation, route }) {
 
     useEffect(() => {
         loadUser();
+
+        // Set up TTS callbacks to track speaking state
+        ttsService.setCallbacks(
+            () => setIsSpeaking(true),   // onStart
+            () => setIsSpeaking(false),  // onFinish
+            () => setIsSpeaking(false)   // onCancel
+        );
+
         return () => {
             ttsService.stop();
             if (hideTimer.current) {
@@ -117,10 +125,8 @@ export default function ChatScreen({ navigation, route }) {
             setMessages(prev => [...prev, assistantMessage]);
             setLastAIResponse(answer);
 
-            // Auto-speak the AI response
-            setIsSpeaking(true);
+            // Auto-speak the AI response (callbacks will update isSpeaking state)
             await ttsService.speak(answer);
-            setIsSpeaking(false);
         } catch (error) {
             console.error('Send message error:', error);
             Alert.alert('Error', 'Failed to send message. Please try again.');
@@ -131,15 +137,12 @@ export default function ChatScreen({ navigation, route }) {
 
     const handlePlayStop = async () => {
         if (isSpeaking) {
-            // Stop current playback
+            // Stop current playback (callback will update state)
             await ttsService.stop();
-            setIsSpeaking(false);
         } else {
-            // Play last AI response if available
+            // Play last AI response if available (callback will update state)
             if (lastAIResponse) {
-                setIsSpeaking(true);
                 await ttsService.speak(lastAIResponse);
-                setIsSpeaking(false);
             }
         }
     };
