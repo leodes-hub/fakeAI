@@ -1,7 +1,14 @@
 import { Resend } from 'resend';
 import crypto from 'crypto';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization of Resend client
+let resend = null;
+function getResendClient() {
+    if (!resend && process.env.RESEND_API_KEY) {
+        resend = new Resend(process.env.RESEND_API_KEY);
+    }
+    return resend;
+}
 
 // Generate a random verification token
 export function generateToken() {
@@ -10,10 +17,16 @@ export function generateToken() {
 
 // Send verification email
 export async function sendVerificationEmail(email, name, token) {
+    const client = getResendClient();
+    if (!client) {
+        console.warn('Email service not configured - RESEND_API_KEY missing');
+        return false;
+    }
+
     const verificationUrl = `${process.env.APP_URL}/api/auth/verify-email/${token}`;
 
     try {
-        const { data, error } = await resend.emails.send({
+        const { data, error } = await client.emails.send({
             from: process.env.FROM_EMAIL || 'FakeAI <noreply@resend.dev>',
             to: [email],
             subject: 'Verify your FakeAI account',
@@ -55,10 +68,16 @@ export async function sendVerificationEmail(email, name, token) {
 
 // Send password reset email
 export async function sendPasswordResetEmail(email, name, token) {
+    const client = getResendClient();
+    if (!client) {
+        console.warn('Email service not configured - RESEND_API_KEY missing');
+        return false;
+    }
+
     const resetUrl = `${process.env.APP_URL}/api/auth/reset-password-page/${token}`;
 
     try {
-        const { data, error } = await resend.emails.send({
+        const { data, error } = await client.emails.send({
             from: process.env.FROM_EMAIL || 'FakeAI <noreply@resend.dev>',
             to: [email],
             subject: 'Reset your FakeAI password',
