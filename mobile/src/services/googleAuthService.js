@@ -11,7 +11,7 @@ class GoogleAuthService {
         try {
             GoogleSignin.configure({
                 // Web Client ID from Google Cloud Console
-                webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+                webClientId: '464167465336-t0mtttp8ed8htuimqfdpb33tq4uon5us.apps.googleusercontent.com',
                 offlineAccess: false,
             });
             this.isConfigured = true;
