@@ -93,6 +93,15 @@ export default function LoginScreen({ navigation }) {
                             Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
                         </Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('ForgotPassword')}
+                        disabled={loading}
+                        style={{ marginTop: 16 }}>
+                        <Text style={styles.linkText}>
+                            <Text style={styles.linkBold}>Forgot Password?</Text>
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>

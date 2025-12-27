@@ -1,9 +1,9 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// API base URL - change this to your server URL
-const API_BASE_URL = 'http://10.0.2.2:5000/api'; // Android emulator localhost
-// For physical device, use: http://YOUR_COMPUTER_IP:5000/api
+// API base URL - Railway production server
+const API_BASE_URL = 'https://fakeai-production.up.railway.app/api';
+// For local development, use: http://10.0.2.2:5000/api
 
 // Create axios instance
 const api = axios.create({
@@ -46,6 +46,8 @@ export const authAPI = {
     register: (data) => api.post('/auth/register', data),
     login: (data) => api.post('/auth/login', data),
     getMe: () => api.get('/auth/me'),
+    forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+    resendVerification: (email) => api.post('/auth/resend-verification', { email }),
 };
 
 // Chat API

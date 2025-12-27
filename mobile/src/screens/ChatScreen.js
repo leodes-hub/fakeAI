@@ -15,16 +15,16 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { chatAPI } from '../services/api';
-import voiceService from '../services/voiceService';
 import ttsService from '../services/ttsService';
 
 export default function ChatScreen({ navigation, route }) {
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
-    const [isListening, setIsListening] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [user, setUser] = useState(null);
     const [headerVisible, setHeaderVisible] = useState(false);
+    const [lastAIResponse, setLastAIResponse] = useState('');
     const flatListRef = useRef(null);
     const headerOpacity = useRef(new Animated.Value(0)).current;
     const headerHeight = useRef(new Animated.Value(0)).current;
@@ -33,7 +33,7 @@ export default function ChatScreen({ navigation, route }) {
     useEffect(() => {
         loadUser();
         return () => {
-            voiceService.destroy();
+            ttsService.stop();
             if (hideTimer.current) {
                 clearTimeout(hideTimer.current);
             }
@@ -115,9 +115,12 @@ export default function ChatScreen({ navigation, route }) {
             };
 
             setMessages(prev => [...prev, assistantMessage]);
+            setLastAIResponse(answer);
 
             // Auto-speak the AI response
+            setIsSpeaking(true);
             await ttsService.speak(answer);
+            setIsSpeaking(false);
         } catch (error) {
             console.error('Send message error:', error);
             Alert.alert('Error', 'Failed to send message. Please try again.');
@@ -126,23 +129,18 @@ export default function ChatScreen({ navigation, route }) {
         }
     };
 
-    const handleVoiceInput = async () => {
-        if (isListening) {
-            await voiceService.stopListening();
-            setIsListening(false);
+    const handlePlayStop = async () => {
+        if (isSpeaking) {
+            // Stop current playback
+            await ttsService.stop();
+            setIsSpeaking(false);
         } else {
-            const started = await voiceService.startListening(
-                'en-US',
-                (text) => {
-                    setInputText(text);
-                    setIsListening(false);
-                },
-                (error) => {
-                    Alert.alert('Voice Error', error);
-                    setIsListening(false);
-                }
-            );
-            setIsListening(started);
+            // Play last AI response if available
+            if (lastAIResponse) {
+                setIsSpeaking(true);
+                await ttsService.speak(lastAIResponse);
+                setIsSpeaking(false);
+            }
         }
     };
 
@@ -226,7 +224,7 @@ export default function ChatScreen({ navigation, route }) {
                     <View style={styles.emptyContainer}>
                         <Text style={styles.emptyText}>Start a conversation</Text>
                         <Text style={styles.emptySubtext}>
-                            Ask me anything or tap the microphone to speak
+                            Ask me anything! Tap ▶️ to replay the last response
                         </Text>
                         <Text style={styles.hintText}>
                             💡 Touch the top of the screen for menu
@@ -252,11 +250,11 @@ export default function ChatScreen({ navigation, route }) {
                     />
 
                     <TouchableOpacity
-                        style={[styles.voiceButton, isListening && styles.voiceButtonActive]}
-                        onPress={handleVoiceInput}
-                        disabled={isSending}>
+                        style={[styles.voiceButton, isSpeaking && styles.voiceButtonActive]}
+                        onPress={handlePlayStop}
+                        disabled={isSending || (!lastAIResponse && !isSpeaking)}>
                         <Text style={styles.voiceButtonText}>
-                            {isListening ? '⏹️' : '🎤'}
+                            {isSpeaking ? '⏹️' : '▶️'}
                         </Text>
                     </TouchableOpacity>
 

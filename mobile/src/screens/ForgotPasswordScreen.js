@@ -13,46 +13,48 @@ import {
 } from 'react-native';
 import { authAPI } from '../services/api';
 
-export default function RegisterScreen({ navigation }) {
-    const [name, setName] = useState('');
+export default function ForgotPasswordScreen({ navigation }) {
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [sent, setSent] = useState(false);
 
-    const handleRegister = async () => {
-        if (!name || !email || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
-            return;
-        }
-
-        if (password.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters');
+    const handleForgotPassword = async () => {
+        if (!email) {
+            Alert.alert('Error', 'Please enter your email address');
             return;
         }
 
         setLoading(true);
         try {
-            const response = await authAPI.register({ name, email, password });
-
-            // Show verification message
-            Alert.alert(
-                'Verify Your Email',
-                'Registration successful! Please check your email and click the verification link to activate your account.',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => navigation.navigate('Login')
-                    }
-                ]
-            );
+            await authAPI.forgotPassword(email);
+            setSent(true);
         } catch (error) {
-            console.error('Registration error:', error);
-            const message = error.response?.data?.error || 'Registration failed. Please try again.';
-            Alert.alert('Registration Failed', message);
+            console.error('Forgot password error:', error);
+            // Still show success (security best practice)
+            setSent(true);
         } finally {
             setLoading(false);
         }
     };
+
+    if (sent) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.content}>
+                    <Text style={styles.title}>📧</Text>
+                    <Text style={styles.subtitle}>Check Your Email</Text>
+                    <Text style={styles.description}>
+                        If an account exists with this email, you'll receive a password reset link shortly.
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={() => navigation.navigate('Login')}>
+                        <Text style={styles.buttonText}>Back to Login</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <KeyboardAvoidingView
@@ -60,17 +62,11 @@ export default function RegisterScreen({ navigation }) {
             style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.content}>
-                    <Text style={styles.title}>Create Account</Text>
-                    <Text style={styles.subtitle}>Join FakeAI today</Text>
-
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Full Name"
-                        placeholderTextColor="#999"
-                        value={name}
-                        onChangeText={setName}
-                        editable={!loading}
-                    />
+                    <Text style={styles.title}>🔐</Text>
+                    <Text style={styles.subtitle}>Forgot Password?</Text>
+                    <Text style={styles.description}>
+                        Enter your email address and we'll send you a link to reset your password.
+                    </Text>
 
                     <TextInput
                         style={styles.input}
@@ -83,24 +79,14 @@ export default function RegisterScreen({ navigation }) {
                         editable={!loading}
                     />
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Password (min 6 characters)"
-                        placeholderTextColor="#999"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                        editable={!loading}
-                    />
-
                     <TouchableOpacity
                         style={[styles.button, loading && styles.buttonDisabled]}
-                        onPress={handleRegister}
+                        onPress={handleForgotPassword}
                         disabled={loading}>
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.buttonText}>Create Account</Text>
+                            <Text style={styles.buttonText}>Send Reset Link</Text>
                         )}
                     </TouchableOpacity>
 
@@ -108,7 +94,7 @@ export default function RegisterScreen({ navigation }) {
                         onPress={() => navigation.navigate('Login')}
                         disabled={loading}>
                         <Text style={styles.linkText}>
-                            Already have an account? <Text style={styles.linkBold}>Sign In</Text>
+                            Remember your password? <Text style={styles.linkBold}>Sign In</Text>
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -131,17 +117,23 @@ const styles = StyleSheet.create({
         padding: 24,
     },
     title: {
-        fontSize: 40,
+        fontSize: 64,
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    subtitle: {
+        fontSize: 28,
         fontWeight: 'bold',
         color: '#fff',
         textAlign: 'center',
         marginBottom: 8,
     },
-    subtitle: {
+    description: {
         fontSize: 16,
         color: '#999',
         textAlign: 'center',
-        marginBottom: 48,
+        marginBottom: 32,
+        lineHeight: 22,
     },
     input: {
         backgroundColor: '#1a1a1a',

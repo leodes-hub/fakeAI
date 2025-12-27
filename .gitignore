@@ -3,13 +3,14 @@ node_modules/
 
 # Environment files
 .env
-.env.*
 .env.local
 .env.*.local
 .env_dev
 backend/.env
 backend/.env_dev
 backend/init-railway-db.js
+backend/migrate-db.js
+!backend/.env.example
 
 # Build outputs
 dist/
