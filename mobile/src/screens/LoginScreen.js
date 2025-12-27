@@ -13,11 +13,13 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI } from '../services/api';
+import googleAuthService from '../services/googleAuthService';
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -42,6 +44,37 @@ export default function LoginScreen({ navigation }) {
             Alert.alert('Login Failed', message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        setGoogleLoading(true);
+        try {
+            const result = await googleAuthService.signIn();
+
+            if (!result.success) {
+                if (result.error !== 'Sign-in cancelled') {
+                    Alert.alert('Google Sign-In', result.error);
+                }
+                return;
+            }
+
+            // Send ID token to our backend
+            const response = await authAPI.googleSignIn(result.idToken);
+            const { token, user } = response.data;
+
+            // Save token and user data
+            await AsyncStorage.setItem('authToken', token);
+            await AsyncStorage.setItem('user', JSON.stringify(user));
+
+            // Navigate to Chat screen
+            navigation.replace('Chat', { user });
+        } catch (error) {
+            console.error('Google sign-in error:', error);
+            const message = error.response?.data?.error || 'Google sign-in failed';
+            Alert.alert('Sign-In Failed', message);
+        } finally {
+            setGoogleLoading(false);
         }
     };
 
@@ -78,11 +111,28 @@ export default function LoginScreen({ navigation }) {
                     <TouchableOpacity
                         style={[styles.button, loading && styles.buttonDisabled]}
                         onPress={handleLogin}
-                        disabled={loading}>
+                        disabled={loading || googleLoading}>
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
                             <Text style={styles.buttonText}>Sign In</Text>
+                        )}
+                    </TouchableOpacity>
+
+                    <View style={styles.divider}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>or</Text>
+                        <View style={styles.dividerLine} />
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
+                        onPress={handleGoogleSignIn}
+                        disabled={loading || googleLoading}>
+                        {googleLoading ? (
+                            <ActivityIndicator color="#000" />
+                        ) : (
+                            <Text style={styles.googleButtonText}>🔵 Sign in with Google</Text>
                         )}
                     </TouchableOpacity>
 
@@ -167,6 +217,33 @@ const styles = StyleSheet.create({
     },
     linkBold: {
         color: '#10a37f',
+        fontWeight: '600',
+    },
+    divider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#333',
+    },
+    dividerText: {
+        color: '#666',
+        paddingHorizontal: 16,
+        fontSize: 14,
+    },
+    googleButton: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    googleButtonText: {
+        color: '#000',
+        fontSize: 16,
         fontWeight: '600',
     },
 });

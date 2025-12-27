@@ -48,6 +48,7 @@ export const authAPI = {
     getMe: () => api.get('/auth/me'),
     forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
     resendVerification: (email) => api.post('/auth/resend-verification', { email }),
+    googleSignIn: (idToken) => api.post('/auth/google', { idToken }),
 };
 
 // Chat API

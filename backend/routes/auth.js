@@ -4,8 +4,10 @@ import { query } from '../config/database.js';
 import { generateToken } from '../utils/jwt.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { generateToken as generateEmailToken, sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService.js';
+import { OAuth2Client } from 'google-auth-library';
 
 const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Register new user
 router.post('/register', async (req, res) => {
@@ -384,6 +386,94 @@ router.get('/me', authenticateToken, async (req, res) => {
             role: req.user.role
         }
     });
+});
+
+// Google OAuth - Sign in with Google
+router.post('/google', async (req, res) => {
+    try {
+        const { idToken } = req.body;
+
+        if (!idToken) {
+            return res.status(400).json({ error: 'Google ID token is required' });
+        }
+
+        // Verify the Google ID token
+        let payload;
+        try {
+            const ticket = await googleClient.verifyIdToken({
+                idToken,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        } catch (verifyError) {
+            console.error('Google token verification failed:', verifyError);
+            return res.status(401).json({ error: 'Invalid Google token' });
+        }
+
+        const { sub: googleId, email, name, picture } = payload;
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email not provided by Google' });
+        }
+
+        // Check if user exists by google_id or email
+        let users = await query(
+            'SELECT id, email, name, role, is_active, google_id FROM users WHERE google_id = ? OR email = ?',
+            [googleId, email]
+        );
+
+        let user;
+        let isNewUser = false;
+
+        if (users.length === 0) {
+            // Create new user with Google
+            const result = await query(
+                `INSERT INTO users (email, name, role, google_id, email_verified, is_active) 
+                 VALUES (?, ?, ?, ?, TRUE, TRUE)`,
+                [email, name, 'user', googleId]
+            );
+
+            user = {
+                id: result.insertId,
+                email,
+                name,
+                role: 'user'
+            };
+            isNewUser = true;
+        } else {
+            user = users[0];
+
+            // Check if user is active
+            if (!user.is_active) {
+                return res.status(403).json({ error: 'Account is deactivated. Please contact administrator.' });
+            }
+
+            // If user exists by email but doesn't have google_id, link it
+            if (!user.google_id) {
+                await query(
+                    'UPDATE users SET google_id = ?, email_verified = TRUE WHERE id = ?',
+                    [googleId, user.id]
+                );
+            }
+        }
+
+        // Generate JWT token
+        const token = generateToken({ userId: user.id });
+
+        res.json({
+            message: isNewUser ? 'Account created with Google' : 'Login successful',
+            token,
+            user: {
+                id: user.id,
+                email: user.email || email,
+                name: user.name || name,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error('Google OAuth error:', error);
+        res.status(500).json({ error: 'Google authentication failed' });
+    }
 });
 
 export default router;
